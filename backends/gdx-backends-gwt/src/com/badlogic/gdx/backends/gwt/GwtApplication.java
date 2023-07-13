@@ -92,7 +92,11 @@ public abstract class GwtApplication implements EntryPoint, Application {
 	public abstract GwtApplicationConfiguration getConfig ();
 
 	public String getPreloaderBaseURL () {
-		return GWT.getHostPageBaseURL() + "assets/";
+		String moduleUrl = GWT.getModuleBaseURL();
+		// The assets directory is stored alongside the module, find the base path without the module name
+		// Total Length - len("html") - len("/")
+		int correctLength = moduleUrl.length() - GWT.getModuleName().length() - 1;
+		return moduleUrl.substring(0, correctLength) + "assets/";
 	}
 
 	@Override
@@ -208,6 +212,7 @@ public abstract class GwtApplication implements EntryPoint, Application {
 		lastHeight = graphics.getHeight();
 		Gdx.graphics = graphics;
 		Gdx.gl20 = graphics.getGL20();
+		Gdx.gl30 = graphics.getGL30();
 		Gdx.gl = Gdx.gl20;
 		if (config.disableAudio) {
 			audio = null;

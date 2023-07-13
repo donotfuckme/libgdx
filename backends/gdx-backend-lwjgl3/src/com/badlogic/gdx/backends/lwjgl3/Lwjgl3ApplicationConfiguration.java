@@ -36,6 +36,7 @@ import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Graphics.Lwjgl3Monitor;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.glutils.HdpiMode;
 import com.badlogic.gdx.graphics.glutils.HdpiUtils;
+import com.badlogic.gdx.math.GridPoint2;
 
 public class Lwjgl3ApplicationConfiguration extends Lwjgl3WindowConfiguration {
 	public static PrintStream errorStream = System.err;
@@ -50,7 +51,7 @@ public class Lwjgl3ApplicationConfiguration extends Lwjgl3WindowConfiguration {
 	int audioDeviceBufferCount = 9;
 
 	public enum GLEmulation {
-		ANGLE_GLES20, GL20, GL30
+		ANGLE_GLES20, GL20, GL30, GL31, GL32
 	}
 
 	GLEmulation glEmulation = GLEmulation.GL20;
@@ -110,7 +111,7 @@ public class Lwjgl3ApplicationConfiguration extends Lwjgl3WindowConfiguration {
 		this.initialVisible = visibility;
 	}
 
-	/** Whether to disable audio or not. If set to false, the returned audio class instances like {@link Audio} or {@link Music}
+	/** Whether to disable audio or not. If set to true, the returned audio class instances like {@link Audio} or {@link Music}
 	 * will be mock implementations. */
 	public void disableAudio (boolean disableAudio) {
 		this.disableAudio = disableAudio;
@@ -123,11 +124,11 @@ public class Lwjgl3ApplicationConfiguration extends Lwjgl3WindowConfiguration {
 
 	/** Sets the audio device configuration.
 	 * 
-	 * @param simultaniousSources the maximum number of sources that can be played simultaniously (default 16)
+	 * @param simultaneousSources the maximum number of sources that can be played simultaniously (default 16)
 	 * @param bufferSize the audio device buffer size in samples (default 512)
 	 * @param bufferCount the audio device buffer count (default 9) */
-	public void setAudioConfig (int simultaniousSources, int bufferSize, int bufferCount) {
-		this.audioDeviceSimultaneousSources = simultaniousSources;
+	public void setAudioConfig (int simultaneousSources, int bufferSize, int bufferCount) {
+		this.audioDeviceSimultaneousSources = simultaneousSources;
 		this.audioDeviceBufferSize = bufferSize;
 		this.audioDeviceBufferCount = bufferCount;
 	}
@@ -167,10 +168,8 @@ public class Lwjgl3ApplicationConfiguration extends Lwjgl3WindowConfiguration {
 		this.samples = samples;
 	}
 
-	/** Set transparent window hint
-	 * @deprecated Results may vary on different OS and GPUs. See https://github.com/glfw/glfw/issues/1237
+	/** Set transparent window hint. Results may vary on different OS and GPUs. Usage with the ANGLE backend is less consistent.
 	 * @param transparentFramebuffer */
-	@Deprecated
 	public void setTransparentFramebuffer (boolean transparentFramebuffer) {
 		this.transparentFramebuffer = transparentFramebuffer;
 	}
@@ -283,5 +282,40 @@ public class Lwjgl3ApplicationConfiguration extends Lwjgl3WindowConfiguration {
 		int virtualY = tmp2.get(0);
 		String name = GLFW.glfwGetMonitorName(glfwMonitor);
 		return new Lwjgl3Monitor(glfwMonitor, virtualX, virtualY, name);
+	}
+
+	static GridPoint2 calculateCenteredWindowPosition (Lwjgl3Monitor monitor, int newWidth, int newHeight) {
+		IntBuffer tmp = BufferUtils.createIntBuffer(1);
+		IntBuffer tmp2 = BufferUtils.createIntBuffer(1);
+		IntBuffer tmp3 = BufferUtils.createIntBuffer(1);
+		IntBuffer tmp4 = BufferUtils.createIntBuffer(1);
+
+		DisplayMode displayMode = getDisplayMode(monitor);
+
+		GLFW.glfwGetMonitorWorkarea(monitor.monitorHandle, tmp, tmp2, tmp3, tmp4);
+		int workareaWidth = tmp3.get(0);
+		int workareaHeight = tmp4.get(0);
+
+		int minX, minY, maxX, maxY;
+
+		// If the new width is greater than the working area, we have to ignore stuff like the taskbar for centering and use the
+		// whole monitor's size
+		if (newWidth > workareaWidth) {
+			minX = monitor.virtualX;
+			maxX = displayMode.width;
+		} else {
+			minX = tmp.get(0);
+			maxX = workareaWidth;
+		}
+		// The same is true for height
+		if (newHeight > workareaHeight) {
+			minY = monitor.virtualY;
+			maxY = displayMode.height;
+		} else {
+			minY = tmp2.get(0);
+			maxY = workareaHeight;
+		}
+
+		return new GridPoint2(Math.max(minX, minX + (maxX - newWidth) / 2), Math.max(minY, minY + (maxY - newHeight) / 2));
 	}
 }
